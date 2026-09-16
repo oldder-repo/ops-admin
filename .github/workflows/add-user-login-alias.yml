@@ -1,0 +1,44 @@
+name: Add user login compatibility route
+
+on:
+  push:
+    paths:
+      - '.github/workflows/add-user-login-alias.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add compatibility login route
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('internal/app/app.go')
+          s = p.read_text()
+          needle = '\ts.mux.HandleFunc("POST /web/user/login", s.loginLegacy)\n'
+          repl = needle + '\ts.mux.HandleFunc("POST /user/login", s.loginLegacy)\n'
+          if 'POST /user/login' not in s:
+              if needle not in s:
+                  raise SystemExit('route anchor not found')
+              s = s.replace(needle, repl, 1)
+              p.write_text(s)
+          PY
+          gofmt -w internal/app/app.go
+          go test ./...
+          go build -o /tmp/ops-admin ./cmd/server
+      - name: Commit compatibility route and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/add-user-login-alias.yml
+          git add internal/app/app.go
+          git commit -m 'feat: support POST /user/login compatibility route'
+          git push
