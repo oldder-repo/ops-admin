@@ -131,6 +131,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/health", s.wrap(false, nil, s.health))
 	s.mux.HandleFunc("POST /api/auth/login", s.login)
 	s.mux.HandleFunc("POST /web/user/login", s.loginLegacy)
+	s.mux.HandleFunc("POST /user/login", s.loginLegacy)
 	s.mux.HandleFunc("GET /api/auth/me", s.wrap(true, nil, s.me))
 	s.mux.HandleFunc("POST /api/auth/logout", s.wrap(true, nil, s.logout))
 	s.mux.HandleFunc("POST /web/user/logout", s.wrap(true, nil, s.logout))
