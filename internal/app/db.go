@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -19,6 +20,8 @@ func openPostgres(databaseURL string) (*DB, error) {
 	}
 	raw.SetMaxOpenConns(8)
 	raw.SetMaxIdleConns(4)
+	raw.SetConnMaxLifetime(30 * time.Minute)
+	raw.SetConnMaxIdleTime(5 * time.Minute)
 	return &DB{raw}, nil
 }
 
@@ -68,11 +71,11 @@ var idTables = map[string]bool{
 func insertTable(q string) string {
 	f := strings.Fields(strings.TrimSpace(q))
 	if len(f) >= 3 && strings.EqualFold(f[0], "insert") && strings.EqualFold(f[1], "into") {
-		table := strings.Trim(f[2], "\"`")
+		table := strings.Trim(f[2], "\"\x60")
 		if i := strings.IndexByte(table, '('); i >= 0 {
 			table = table[:i]
 		}
-		return strings.ToLower(strings.Trim(table, "\"`"))
+		return strings.ToLower(strings.Trim(table, "\"\x60"))
 	}
 	return ""
 }
