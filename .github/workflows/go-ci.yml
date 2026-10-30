@@ -1,0 +1,50 @@
+name: Go backend CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+      - 'cmd/**'
+      - 'internal/**'
+      - '.github/workflows/go-ci.yml'
+  pull_request:
+    paths:
+      - 'go.mod'
+      - 'go.sum'
+      - 'cmd/**'
+      - 'internal/**'
+      - '.github/workflows/go-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: go-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Format check
+        run: |
+          files=$(gofmt -l cmd internal)
+          if [ -n "$files" ]; then
+            echo "$files"
+            exit 1
+          fi
+      - name: Go vet
+        run: go vet ./...
+      - name: Unit tests
+        run: go test ./...
+      - name: Build server
+        run: go build -o /tmp/ops-admin-server ./cmd/server
